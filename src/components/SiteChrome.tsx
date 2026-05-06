@@ -1,5 +1,7 @@
-import { Link, NavLink, useLocation } from "react-router-dom";
-import { Brain } from "lucide-react";
+import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Brain, LogOut } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { ThemeToggle } from "@/components/ThemeProvider";
 
 const links = [
   { to: "/", label: "Home" },
@@ -9,7 +11,14 @@ const links = [
 ];
 
 export const SiteNav = () => {
-  const { pathname } = useLocation();
+  const { user, displayName, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+  };
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl">
       <div className="container flex h-16 items-center justify-between">
@@ -30,9 +39,7 @@ export const SiteNav = () => {
               end={l.to === "/"}
               className={({ isActive }) =>
                 `px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  isActive
-                    ? "bg-secondary text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
+                  isActive ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"
                 }`
               }
             >
@@ -40,12 +47,32 @@ export const SiteNav = () => {
             </NavLink>
           ))}
         </nav>
-        <Link
-          to="/train"
-          className="hidden sm:inline-flex items-center rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-        >
-          Start Training
-        </Link>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          {user ? (
+            <>
+              <div className="hidden sm:flex items-center gap-2 rounded-full bg-secondary px-3 py-1.5 text-xs">
+                <span className="h-2 w-2 rounded-full bg-success" />
+                <span className="font-medium">{displayName}</span>
+              </div>
+              <button
+                onClick={handleSignOut}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-2 text-xs font-medium hover:bg-secondary"
+                aria-label="Sign out"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Sign out</span>
+              </button>
+            </>
+          ) : (
+            <Link
+              to="/auth"
+              className="inline-flex items-center rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              Sign in
+            </Link>
+          )}
+        </div>
       </div>
       <nav className="md:hidden flex items-center justify-center gap-1 pb-2 px-4 overflow-x-auto">
         {links.map((l) => (
@@ -63,7 +90,6 @@ export const SiteNav = () => {
           </NavLink>
         ))}
       </nav>
-      {pathname === "/" ? null : null}
     </header>
   );
 };

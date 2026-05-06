@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SiteNav, SiteFooter } from "@/components/SiteChrome";
-import { saveSession, type Session } from "@/lib/sessions";
+import { saveSession } from "@/lib/sessions";
 import { Pause, Play, RotateCcw, Target as TargetIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 type Target = { id: number; x: number; y: number; size: number; bornAt: number; ttl: number };
 
 const ROUND_DURATION = 45_000; // ms
 
 const Train = () => {
+  const { user, displayName } = useAuth();
   const arenaRef = useRef<HTMLDivElement>(null);
   const [running, setRunning] = useState(false);
   const [done, setDone] = useState(false);
@@ -86,9 +88,10 @@ const Train = () => {
   useEffect(() => {
     if (!done) return;
     if (hits + misses === 0) return;
-    const session: Session = {
-      id: `s_${Date.now()}`,
-      player_name: "You",
+    if (!user) return;
+    saveSession({
+      user_id: user.id,
+      player_name: displayName || "Player",
       session_date: new Date().toISOString(),
       score,
       accuracy,
@@ -96,9 +99,9 @@ const Train = () => {
       difficulty_level: difficulty,
       rounds: hits + misses,
       mistakes: misses,
-    };
-    saveSession(session);
-    toast.success("Session saved", { description: `Score ${score} · Accuracy ${accuracy}% · Lv ${difficulty}` });
+    })
+      .then(() => toast.success("Session saved", { description: `Score ${score} · Accuracy ${accuracy}% · Lv ${difficulty}` }))
+      .catch(() => toast.error("Couldn't save session"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [done]);
 

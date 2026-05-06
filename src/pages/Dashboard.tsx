@@ -1,12 +1,24 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SiteNav, SiteFooter } from "@/components/SiteChrome";
-import { loadSessions, resetSessions } from "@/lib/sessions";
+import { loadSessions, resetSessions, type Session } from "@/lib/sessions";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Bar, BarChart } from "recharts";
-import { Activity, Gauge, Target, Trophy, Timer, RefreshCw } from "lucide-react";
+import { Activity, Gauge, Target, Trophy, Timer, RefreshCw, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 const Dashboard = () => {
-  const sessions = useMemo(() => loadSessions().slice().sort((a, b) => +new Date(a.session_date) - +new Date(b.session_date)), []);
+  const { user, displayName } = useAuth();
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+    loadSessions(user.id, displayName || "Player").then((s) => {
+      setSessions(s.slice().sort((a, b) => +new Date(a.session_date) - +new Date(b.session_date)));
+      setLoading(false);
+    });
+  }, [user, displayName]);
+
   const totals = useMemo(() => {
     const totalScore = sessions.reduce((s, x) => s + x.score, 0);
     const avgRT = Math.round(sessions.reduce((s, x) => s + x.avg_reaction_ms, 0) / Math.max(1, sessions.length));
@@ -24,10 +36,11 @@ const Dashboard = () => {
     diff: s.difficulty_level,
   }));
 
-  const handleReset = () => {
-    resetSessions();
+  const handleReset = async () => {
+    if (!user) return;
+    const fresh = await resetSessions(user.id, displayName || "Player");
+    setSessions(fresh.slice().sort((a, b) => +new Date(a.session_date) - +new Date(b.session_date)));
     toast.success("Sample data restored");
-    setTimeout(() => window.location.reload(), 400);
   };
 
   return (
@@ -39,7 +52,7 @@ const Dashboard = () => {
             <div className="text-xs uppercase tracking-widest text-muted-foreground">Player Dashboard</div>
             <h1 className="mt-1 text-3xl md:text-4xl font-semibold">Performance summary</h1>
             <p className="mt-2 text-sm text-muted-foreground max-w-xl">
-              Aggregated insights across your training sessions, modeled after the Supabase schema used by the project.
+              Aggregated insights across your training sessions, persisted to your account.
             </p>
           </div>
           <button onClick={handleReset} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm hover:bg-secondary">
@@ -47,6 +60,10 @@ const Dashboard = () => {
           </button>
         </div>
 
+        {loading ? (
+          <div className="grid place-items-center py-24"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+        ) : (
+        <>
         {/* KPI cards */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
           <Kpi icon={Trophy} label="Total score" value={totals.totalScore.toLocaleString()} />
@@ -91,11 +108,9 @@ const Dashboard = () => {
 
         {/* Sessions table */}
         <div className="rounded-3xl bg-card border border-border shadow-soft overflow-hidden">
-          <div className="px-6 py-5 border-b border-border flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold">Session history</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">Schema: <code className="font-mono">sessions(player_name, session_date, score, accuracy, avg_reaction_ms, difficulty_level, rounds, mistakes)</code></p>
-            </div>
+          <div className="px-6 py-5 border-b border-border">
+            <h2 className="text-lg font-semibold">Session history</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">All sessions are saved to your secure account.</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -124,16 +139,16 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Summary */}
         <div className="mt-8 rounded-3xl bg-gradient-card border border-border p-7 shadow-soft">
           <div className="text-xs uppercase tracking-widest text-muted-foreground">Performance summary</div>
           <p className="mt-3 text-base md:text-lg leading-relaxed text-balance">
             You are averaging <span className="font-semibold text-foreground">{totals.avgAcc}% accuracy</span> with a{" "}
             <span className="font-semibold text-foreground">{totals.avgRT}ms</span> reaction time. The adaptive controller
-            has progressed you to <span className="font-semibold text-foreground">Level {totals.lastDiff}</span>, indicating
-            sustained attention and consistent target acquisition. Continue training to push reaction times below 450ms.
+            has progressed you to <span className="font-semibold text-foreground">Level {totals.lastDiff}</span>.
           </p>
         </div>
+        </>
+        )}
       </main>
       <SiteFooter />
     </div>
