@@ -35,24 +35,6 @@ export async function loadSessions(userId: string, playerName: string): Promise<
     .order("session_date", { ascending: true });
 
   if (error || !data) return [];
-
-  if (data.length === 0) {
-    // Seed sample data for first-time users so the dashboard isn't empty
-    const rows = seedTemplates.map((t) => ({
-      user_id: userId,
-      player_name: playerName,
-      session_date: daysAgo(t.offset),
-      score: t.score,
-      accuracy: t.accuracy,
-      avg_reaction_ms: t.avg_reaction_ms,
-      difficulty_level: t.difficulty_level,
-      rounds: t.rounds,
-      mistakes: t.mistakes,
-    }));
-    const { data: seeded } = await supabase.from("training_sessions").insert(rows).select();
-    return (seeded ?? []).map(toSession);
-  }
-
   return data.map(toSession);
 }
 
