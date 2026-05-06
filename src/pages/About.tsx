@@ -23,7 +23,7 @@ const About = () => {
           </p>
           <p>
             The original prototype was implemented in Python using <strong>Pygame</strong> with an <strong>SQLite</strong>{" "}
-            backend. This Lovable version reproduces the same concept on the web for accessible demonstration.
+            backend.
           </p>
         </Section>
 
